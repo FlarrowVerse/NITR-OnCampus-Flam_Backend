@@ -183,8 +183,7 @@ backoff_base=3
 
 ### ⚙️ Job Lifecycle
 
-```mermaid
-flowchart LR
+```
     A[pending] -->|Picked by worker| B[processing]
     B -->|Exit code 0| C[completed]
     B -->|Non-zero exit code| D[failed]
