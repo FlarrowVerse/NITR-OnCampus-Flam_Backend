@@ -7,7 +7,14 @@ import picocli.CommandLine.Command;
     name = "queuectl",
     mixinStandardHelpOptions = true,
     version = "0.1.0",
-    subcommands = { EnqueueCommand.class, ListCommand.class, WorkerCommand.class, StatusCommand.class, DLQCommand.class, ConfigCommand.class },
+    subcommands = {
+        EnqueueCommand.class,
+        ListCommand.class,
+        WorkerCommand.class,
+        StatusCommand.class,
+        DLQCommand.class,
+        ConfigCommand.class
+    },
     description = "QueueCTL CLI entrypoint"
 )
 public class QueueCtl implements Runnable {
