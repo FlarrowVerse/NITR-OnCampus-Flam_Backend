@@ -51,9 +51,11 @@ public class WorkerRepository {
     }
 
     // Mark job failed and schedule retry/backoff
-    public static void markFailed(Connection conn, Job job, int backoffBase) throws SQLException {
+    public static void markFailed(Connection conn, Job job, int backoffBase, int defaultMaxRetries) throws SQLException {
+        
+        int maxRetries = (job.maxRetries > 0) ? job.maxRetries : defaultMaxRetries;
+        boolean retry = job.attempts < maxRetries;
         job.attempts++;
-        boolean retry = job.attempts < job.maxRetries;
 
         if (retry) {
             try (PreparedStatement ps = conn.prepareStatement("""

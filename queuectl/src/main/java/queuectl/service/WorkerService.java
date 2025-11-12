@@ -15,24 +15,35 @@ import queuectl.model.Job;
 public class WorkerService implements Runnable {
 
     private final String workerId = UUID.randomUUID().toString();
-    private final int backoffBase;
-    private final int defaultMaxRetries;
+    private int backoffBase, defaultMaxRetries, reclaimTimeout;
     private volatile boolean running = true;
 
     public WorkerService(int backoffBase) {
         this.backoffBase = ConfigRepository.getInt("backoff_base", 2);
         this.defaultMaxRetries = ConfigRepository.getInt("max_retries", 3);
+        this.reclaimTimeout = ConfigRepository.getInt("reclaim_timeout", 30);
     }
 
     @Override
     public void run() {
         System.out.println("Worker " + workerId + " started.");
+
+        long lastConfigReload = 0;
         while (running) {
+            if (System.currentTimeMillis() - lastConfigReload > 60_000) {
+                this.backoffBase = ConfigRepository.getInt("backoff_base", backoffBase);
+                this.defaultMaxRetries = ConfigRepository.getInt("max_retries", defaultMaxRetries);
+                
+                lastConfigReload = System.currentTimeMillis();
+                
+                System.out.printf("[%s] 🔁 Reloaded config: backoffBase=%d, maxRetries=%d%n",
+                    workerId.substring(0,5), backoffBase, defaultMaxRetries);
+            }
             try (Connection conn = Database.get()) {
                 conn.setAutoCommit(false);
                 
                 if (Math.random() < 0.1) { // occasionally run cleanup
-                    int reclaimed = WorkerRepository.reclaimStaleJobs(conn, 30); // 30 sec timeout
+                    int reclaimed = WorkerRepository.reclaimStaleJobs(conn, reclaimTimeout); // 30 sec timeout
                     if (reclaimed > 0) {
                         System.out.printf("[%s] ♻️ Reclaimed %d stuck jobs%n", workerId.substring(0,5), reclaimed);
                     }
@@ -57,7 +68,7 @@ public class WorkerService implements Runnable {
                     conn.commit();
                     System.out.printf("[%s] ✅ Completed job %s%n", Instant.now(), job.id);
                 } else {
-                    WorkerRepository.markFailed(conn, job, backoffBase);
+                    WorkerRepository.markFailed(conn, job, backoffBase, defaultMaxRetries);
                     conn.commit();
                     System.out.printf("[%s] ❌ Failed job %s (attempt %d)%n",
                             Instant.now(), job.id, job.attempts + 1);

@@ -30,8 +30,8 @@ public class DLQRepository {
                     job.id = rs.getString("id");
                     job.command = rs.getString("command");
                     job.attempts = rs.getInt("attempts");
-                    job.maxRetries = rs.getInt("maxRetries");
-                    job.lastError = rs.getString("lastError");
+                    job.maxRetries = rs.getInt("max_retries");
+                    job.lastError = rs.getString("last_error");
                     job.updatedAt = rs.getObject("failed_at", OffsetDateTime.class);
                 }
             

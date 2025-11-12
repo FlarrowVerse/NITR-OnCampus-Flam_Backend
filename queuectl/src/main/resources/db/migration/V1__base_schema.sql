@@ -1,39 +1,50 @@
-CREATE TYPE job_state AS ENUM ('pending','processing','completed','failed','dead');
+-- ============================
+-- QueueCTL Schema Migration
+-- Works in PostgreSQL and H2 (MODE=PostgreSQL)
+-- ============================
 
-CREATE TABLE jobs (
+-- ENUM definition (skip for H2)
+-- CREATE TYPE job_state AS ENUM ('pending','processing','completed','failed','dead');
+
+-- JOBS TABLE
+CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
     command TEXT NOT NULL,
-    state job_state NOT NULL DEFAULT 'pending',
+    state VARCHAR(20) NOT NULL DEFAULT 'pending',
     attempts INT NOT NULL DEFAULT 0,
     max_retries INT NOT NULL DEFAULT 3,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    next_run_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    next_run_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_error TEXT,
     worker_id TEXT
 );
 
-CREATE INDEX idx_jobs_state_next ON jobs(state, next_run_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_state_next ON jobs(state, next_run_at);
 
-CREATE TABLE dlq (
+-- DLQ TABLE
+CREATE TABLE IF NOT EXISTS dlq (
     id TEXT PRIMARY KEY,
     command TEXT NOT NULL,
     attempts INT NOT NULL,
     max_retries INT NOT NULL,
-    failed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    failed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_error TEXT
 );
 
-CREATE TABLE config (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
+-- CONFIG TABLE
+CREATE TABLE IF NOT EXISTS config (
+    "key" TEXT PRIMARY KEY,
+    "value" TEXT NOT NULL
 );
 
-CREATE TABLE control (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
+-- CONTROL TABLE
+CREATE TABLE IF NOT EXISTS control (
+    "key" TEXT PRIMARY KEY,
+    "value" TEXT NOT NULL
 );
 
-INSERT INTO config(key,value) VALUES ('max_retries','3') ON CONFLICT DO NOTHING;
-INSERT INTO config(key,value) VALUES ('backoff_base','2') ON CONFLICT DO NOTHING;
-INSERT INTO control(key,value) VALUES ('shutdown','0') ON CONFLICT DO NOTHING;
+-- Default configuration values
+MERGE INTO config ("key", "value") KEY("key") VALUES ('max_retries', '3');
+MERGE INTO config ("key", "value") KEY("key") VALUES ('backoff_base', '2');
+MERGE INTO control ("key", "value") KEY("key") VALUES ('shutdown', '0');
